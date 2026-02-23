@@ -1,0 +1,290 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import type { Category, PlannerEvent } from "@/lib/schedule-types"
+import { getCategoryStyle } from "@/lib/schedule-types"
+import {
+  minutesToHHMM,
+  hhmmToMinutes,
+  getDurationMinutes,
+  clampMinutesToDay,
+} from "@/lib/time"
+
+interface EventModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  event?: PlannerEvent | null
+  categories: Category[]
+  onSave: (event: PlannerEvent) => void
+}
+
+export function EventModal({
+  open,
+  onOpenChange,
+  event,
+  categories,
+  onSave,
+}: EventModalProps) {
+  const isEditing = !!event
+  const firstCategoryId = categories[0]?.id ?? ""
+
+  const [title, setTitle] = useState("")
+  const [startTime, setStartTime] = useState("")
+  const [endTime, setEndTime] = useState("")
+  const [durationInput, setDurationInput] = useState("")
+  const [notes, setNotes] = useState("")
+  const [categoryId, setCategoryId] = useState(firstCategoryId)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Derive duration (minutes) from start and end for display
+  const startMinutes = hhmmToMinutes(startTime)
+  const endMinutes = hhmmToMinutes(endTime)
+  const derivedDuration =
+    startMinutes !== null && endMinutes !== null && endMinutes >= startMinutes
+      ? getDurationMinutes(startMinutes, endMinutes)
+      : 0
+
+  // Sync duration input when start/end change (so the number field reflects derived value)
+  useEffect(() => {
+    setDurationInput(String(derivedDuration))
+  }, [startTime, endTime])
+
+  useEffect(() => {
+    if (open) {
+      if (event) {
+        setTitle(event.title)
+        setStartTime(minutesToHHMM(event.startMinutes))
+        setEndTime(minutesToHHMM(event.endMinutes))
+        setDurationInput(String(getDurationMinutes(event.startMinutes, event.endMinutes)))
+        setNotes(event.notes ?? "")
+        setCategoryId(event.categoryId)
+      } else {
+        setTitle("")
+        setStartTime("08:00")
+        setEndTime("09:00")
+        setDurationInput("60")
+        setNotes("")
+        setCategoryId(categories[0]?.id ?? "")
+      }
+      setErrors({})
+    }
+  }, [open, event, categories])
+
+  const handleStartChange = (value: string) => {
+    setStartTime(value)
+    const startMin = hhmmToMinutes(value)
+    const endMin = hhmmToMinutes(endTime)
+    if (startMin !== null && endMin !== null && startMin > endMin) {
+      setEndTime(value)
+    }
+  }
+
+  const handleEndChange = (value: string) => {
+    setEndTime(value)
+    const endMin = hhmmToMinutes(value)
+    const startMin = hhmmToMinutes(startTime)
+    if (startMin !== null && endMin !== null && endMin < startMin) {
+      setStartTime(value)
+    }
+  }
+
+  const handleDurationChange = (value: string) => {
+    const num = parseInt(value, 10)
+    if (value === "" || Number.isNaN(num)) {
+      setDurationInput(value)
+      return
+    }
+    const duration = Math.max(0, num)
+    setDurationInput(String(duration))
+    const startMin = hhmmToMinutes(startTime)
+    if (startMin !== null) {
+      const newEndMin = clampMinutesToDay(startMin + duration)
+      setEndTime(minutesToHHMM(newEndMin))
+    }
+  }
+
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {}
+
+    if (!title.trim()) {
+      newErrors.title = "Title is required"
+    }
+
+    const startMin = hhmmToMinutes(startTime)
+    if (startMin === null) {
+      newErrors.startTime = "Valid time (HH:MM)"
+    }
+
+    const endMin = hhmmToMinutes(endTime)
+    if (endMin === null) {
+      newErrors.endTime = "Valid time (HH:MM)"
+    }
+
+    if (startMin !== null && endMin !== null && endMin <= startMin) {
+      newErrors.endTime = "End must be after start"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validate()) return
+
+    const startMinutesVal = hhmmToMinutes(startTime)!
+    const endMinutesVal = hhmmToMinutes(endTime)!
+
+    onSave({
+      id: event?.id ?? crypto.randomUUID(),
+      title: title.trim(),
+      startMinutes: startMinutesVal,
+      endMinutes: endMinutesVal,
+      categoryId: categoryId || firstCategoryId,
+      notes: notes.trim() || undefined,
+    })
+
+    onOpenChange(false)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? "Edit Event" : "Add Event"}
+          </DialogTitle>
+          <DialogDescription>
+            {isEditing
+              ? "Update the details for this schedule event."
+              : "Add a new event to the production schedule."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="event-modal-title">Title</Label>
+            <Input
+              id="event-modal-title"
+              placeholder="e.g. Lighting Setup - Scene 1"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              aria-invalid={!!errors.title}
+            />
+            {errors.title && (
+              <p className="text-xs text-destructive">{errors.title}</p>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="event-modal-category">Category</Label>
+            <Select value={categoryId} onValueChange={setCategoryId}>
+              <SelectTrigger id="event-modal-category" className="w-full">
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((cat) => {
+                  const style = getCategoryStyle(cat)
+                  return (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      <span className="flex items-center gap-2">
+                        <span className={`size-2 rounded-full ${style.dot}`} />
+                        {style.label}
+                      </span>
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="event-modal-start">Start (HH:MM)</Label>
+              <Input
+                id="event-modal-start"
+                type="time"
+                value={startTime}
+                onChange={(e) => handleStartChange(e.target.value)}
+                aria-invalid={!!errors.startTime}
+              />
+              {errors.startTime && (
+                <p className="text-xs text-destructive">{errors.startTime}</p>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="event-modal-end">End (HH:MM)</Label>
+              <Input
+                id="event-modal-end"
+                type="time"
+                value={endTime}
+                onChange={(e) => handleEndChange(e.target.value)}
+                aria-invalid={!!errors.endTime}
+              />
+              {errors.endTime && (
+                <p className="text-xs text-destructive">{errors.endTime}</p>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="event-modal-duration">Duration (min)</Label>
+              <Input
+                id="event-modal-duration"
+                type="number"
+                min={0}
+                max={1440}
+                value={durationInput}
+                onChange={(e) => handleDurationChange(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="event-modal-notes">Notes</Label>
+            <Textarea
+              id="event-modal-notes"
+              placeholder="Optional notes for the crew..."
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              className="min-h-20 resize-none"
+            />
+          </div>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="bg-foreground text-background hover:bg-foreground/90"
+            >
+              Save Event
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}

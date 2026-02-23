@@ -33,3 +33,44 @@ export function clampMinutesToDay(minutes: number): number {
   if (m > 1439) return 1439
   return m
 }
+
+/** Snap minutes to the nearest 15-minute grid (0, 15, 30, 45, ...). */
+export function snapTo15Minutes(minutes: number): number {
+  const m = Math.floor(minutes)
+  return Math.round(m / 15) * 15
+}
+
+/** Snap minutes to the nearest 5-minute grid (0, 5, 10, 15, ...). */
+export function snapTo5Minutes(minutes: number): number {
+  const m = Math.floor(minutes)
+  return Math.round(m / 5) * 5
+}
+
+/** Drag bounds: 06:00 = 360, 22:00 = 1320. */
+export const DRAG_START_MIN = 6 * 60
+export const DRAG_END_MIN = 22 * 60
+
+/** Clamp start so the event (start + duration) stays within [DRAG_START_MIN, DRAG_END_MIN]. */
+export function clampStartToDragBounds(
+  startMinutes: number,
+  durationMinutes: number
+): number {
+  const start = Math.floor(startMinutes)
+  const duration = Math.max(0, Math.floor(durationMinutes))
+  const minStart = DRAG_START_MIN
+  const maxStart = Math.max(minStart, DRAG_END_MIN - duration)
+  if (start < minStart) return minStart
+  if (start > maxStart) return maxStart
+  return start
+}
+
+/** Clamp duration so end = start + duration does not exceed DRAG_END_MIN. */
+export function clampDurationToDragBounds(
+  startMinutes: number,
+  durationMinutes: number
+): number {
+  const start = Math.floor(startMinutes)
+  const duration = Math.max(0, Math.floor(durationMinutes))
+  const maxDuration = DRAG_END_MIN - start
+  return Math.min(duration, maxDuration)
+}

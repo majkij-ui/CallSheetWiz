@@ -11,6 +11,8 @@ import {
   initialPlannerEvents,
 } from "@/lib/schedule-data"
 import type { Category, PlannerEvent, SavedDay } from "@/lib/schedule-types"
+import { setEventStart, setEventDuration } from "@/lib/editing-engine"
+import { getDurationMinutes } from "@/lib/time"
 import { getSavedDays, setSavedDays } from "@/lib/saved-days-storage"
 import { Separator } from "@/components/ui/separator"
 
@@ -83,6 +85,27 @@ export default function DayPlannerPage() {
     setManagerOpen(false)
   }
 
+  const handleEventChange = (
+    eventId: string,
+    updates: { startMinutes?: number; endMinutes?: number }
+  ) => {
+    setEvents((prev) => {
+      const idx = prev.findIndex((e) => e.id === eventId)
+      if (idx < 0) return prev
+      const event = prev[idx]
+      let next = event
+      if (updates.startMinutes != null) {
+        next = setEventStart(event, updates.startMinutes)
+      }
+      if (updates.endMinutes != null) {
+        next = setEventDuration(next, getDurationMinutes(next.startMinutes, updates.endMinutes))
+      }
+      const out = [...prev]
+      out[idx] = next
+      return out
+    })
+  }
+
   const handleDeleteDay = (dayId: string) => {
     if (!isMounted) return
     setSavedDaysState((prev) => {
@@ -100,6 +123,7 @@ export default function DayPlannerPage() {
         <VisualTimeline
           events={events}
           categories={categories}
+          onEventChange={handleEventChange}
         />
         <Separator className="bg-border" />
         <CallSheet

@@ -6,6 +6,7 @@ import { VisualTimeline } from "@/components/visual-timeline"
 import { CallSheet } from "@/components/call-sheet"
 import { EventModal } from "@/components/event-modal"
 import { ScheduleManagerModal } from "@/components/schedule-manager-modal"
+import { TagManagerModal } from "@/components/tag-manager-modal"
 import {
   defaultCategories,
   initialPlannerEvents,
@@ -15,13 +16,18 @@ import { setEventStart, setEventDuration } from "@/lib/editing-engine"
 import { getDurationMinutes } from "@/lib/time"
 import { getSavedDays, setSavedDays } from "@/lib/saved-days-storage"
 import { Separator } from "@/components/ui/separator"
+import { Button } from "@/components/ui/button"
+import { Plus } from "lucide-react"
 
 export default function DayPlannerPage() {
+  const [title, setTitle] = useState("Untitled Shoot")
+  const [shootDate, setShootDate] = useState<Date>(new Date())
   const [categories, setCategories] = useState<Category[]>(defaultCategories)
   const [events, setEvents] = useState<PlannerEvent[]>(initialPlannerEvents)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<PlannerEvent | null>(null)
   const [managerOpen, setManagerOpen] = useState(false)
+  const [tagManagerOpen, setTagManagerOpen] = useState(false)
 
   const [savedDays, setSavedDaysState] = useState<SavedDay[]>([])
   const [isMounted, setIsMounted] = useState(false)
@@ -35,6 +41,13 @@ export default function DayPlannerPage() {
     setSavedDaysState(getSavedDays())
   }, [isMounted])
 
+  const normalizeDateForStorage = (date: Date): string => {
+    const normalized = new Date(date)
+    // Persist at noon local time to avoid timezone date rollover.
+    normalized.setHours(12, 0, 0, 0)
+    return normalized.toISOString()
+  }
+
   const handleAddEvent = () => {
     setEditingEvent(null)
     setDialogOpen(true)
@@ -47,6 +60,30 @@ export default function DayPlannerPage() {
 
   const handleDeleteEvent = (eventId: string) => {
     setEvents((prev) => prev.filter((e) => e.id !== eventId))
+  }
+
+  const handleUpdateEvent = (updatedEvent: PlannerEvent) => {
+    setEvents((prev) =>
+      prev.map((event) => (event.id === updatedEvent.id ? updatedEvent : event))
+    )
+  }
+
+  const handleClearDay = () => {
+    setEvents([])
+  }
+
+  const handleAddTag = (tag: Category) => {
+    setCategories((prev) => [...prev, tag])
+  }
+
+  const handleDeleteTag = (tagId: string) => {
+    setCategories((prev) => prev.filter((c) => c.id !== tagId))
+    // Fallback to neutral gray by clearing the missing tag id.
+    setEvents((prev) =>
+      prev.map((event) =>
+        event.categoryId === tagId ? { ...event, categoryId: "" } : event
+      )
+    )
   }
 
   const handleSaveEvent = (event: PlannerEvent) => {
@@ -68,7 +105,7 @@ export default function DayPlannerPage() {
     const day: SavedDay = {
       id: crypto.randomUUID(),
       dayTitle: dayTitle.trim(),
-      date: new Date().toISOString(),
+      date: normalizeDateForStorage(shootDate),
       events: events.map((e) => ({ ...e })),
       categories: categories.map((c) => ({ ...c })),
     }
@@ -82,6 +119,11 @@ export default function DayPlannerPage() {
   const handleLoadDay = (day: SavedDay) => {
     setEvents(day.events.map((e) => ({ ...e })))
     setCategories(day.categories.map((c) => ({ ...c })))
+    setTitle(day.dayTitle || "Untitled Shoot")
+    const parsed = new Date(day.date)
+    if (!Number.isNaN(parsed.getTime())) {
+      setShootDate(parsed)
+    }
     setManagerOpen(false)
   }
 
@@ -118,19 +160,39 @@ export default function DayPlannerPage() {
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 flex flex-col gap-6">
-        <PlannerHeader onAddEvent={handleAddEvent} onManageDays={() => setManagerOpen(true)} />
+        <PlannerHeader
+          title={title}
+          shootDate={shootDate}
+          onTitleChange={() => setManagerOpen(true)}
+          onDateChange={(date) => {
+            if (date) setShootDate(date)
+          }}
+          onManageDays={() => setManagerOpen(true)}
+          onManageTags={() => setTagManagerOpen(true)}
+          onClearDay={handleClearDay}
+        />
         <Separator className="bg-border" />
         <VisualTimeline
           events={events}
           categories={categories}
           onEventChange={handleEventChange}
         />
+        <div className="flex justify-center">
+          <Button
+            onClick={handleAddEvent}
+            className="h-11 gap-2 rounded-full px-7 bg-[#ff6700] text-white hover:bg-[#ff6700]/90 shadow-[0_0_24px_rgba(255,103,0,0.35)]"
+          >
+            <Plus className="size-4" />
+            Add Event
+          </Button>
+        </div>
         <Separator className="bg-border" />
         <CallSheet
           events={events}
           categories={categories}
           onEdit={handleEditEvent}
           onDelete={handleDeleteEvent}
+          onUpdateEvent={handleUpdateEvent}
         />
       </div>
 
@@ -139,6 +201,9 @@ export default function DayPlannerPage() {
         onOpenChange={setDialogOpen}
         event={editingEvent}
         categories={categories}
+        defaultStartMinutes={
+          events.length > 0 ? Math.max(...events.map((e) => e.endMinutes)) : 360
+        }
         onSave={handleSaveEvent}
       />
 
@@ -146,9 +211,19 @@ export default function DayPlannerPage() {
         open={managerOpen}
         onOpenChange={setManagerOpen}
         savedDays={savedDays}
+        dayTitle={title}
+        onDayTitleChange={setTitle}
         onSaveCurrent={handleSaveCurrentDay}
         onLoad={handleLoadDay}
         onDelete={handleDeleteDay}
+      />
+
+      <TagManagerModal
+        open={tagManagerOpen}
+        onOpenChange={setTagManagerOpen}
+        categories={categories}
+        onAddTag={handleAddTag}
+        onDeleteTag={handleDeleteTag}
       />
     </main>
   )

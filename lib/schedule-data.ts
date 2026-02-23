@@ -234,22 +234,28 @@ export function getEventStartOffset(event: ScheduleEvent, timelineStartHour: num
 
 /** Default categories derived from legacy departments (for initial state). */
 export const defaultCategories: Category[] = [
-  { id: "camera-grip", name: "Camera & Grip", colorKey: "blue" },
-  { id: "art", name: "Art Department", colorKey: "violet" },
-  { id: "talent-hmu", name: "Talent & Hair/Makeup", colorKey: "emerald" },
-  { id: "meals-breaks", name: "Meals & Breaks", colorKey: "orange" },
+  { id: "camera", label: "Camera", color: "#00f3ff" },
+  { id: "talent", label: "Talent", color: "#ff00ff" },
+  { id: "art", label: "Art", color: "#9d00ff" },
+  { id: "logistics", label: "Logistics", color: "#39ff14" },
 ]
 
 /** Convert legacy ScheduleEvent to PlannerEvent (minutes from midnight). */
 function toPlannerEvent(e: ScheduleEvent): PlannerEvent {
   const startMinutes = e.startHour * 60 + e.startMinute
   const endMinutes = e.endHour * 60 + e.endMinute
+  const departmentToTag: Record<Department, string> = {
+    "camera-grip": "camera",
+    art: "art",
+    "talent-hmu": "talent",
+    "meals-breaks": "logistics",
+  }
   return {
     id: e.id,
     title: e.title,
     startMinutes,
     endMinutes,
-    categoryId: e.department,
+    categoryId: departmentToTag[e.department],
     notes: e.notes,
   }
 }

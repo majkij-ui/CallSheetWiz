@@ -1,0 +1,25 @@
+# Project Context: Video Production Day Planner
+
+## Core Technology Stack
+- Next.js (App Router), Tailwind CSS, shadcn/ui.
+- State Management: React useState/useEffect (persisted to LocalStorage).
+- Timeline Physics: @dnd-kit (core, modifiers, sensors).
+
+## Architectural Truths (The Rules)
+1. **Time Representation**: ALWAYS store and calculate time as "minutes from midnight" (integer). Use helper functions `minToHHMM(int)` and `HHMMToMin(string)` for UI conversion.
+2. **Timeline Math**: The timeline spans 06:00 (360 mins) to 22:00 (1320 mins). Total duration is 960 minutes.
+3. **Data Integrity**: 
+   - Every Event must have an `id`, `title`, `startMin`, `endMin`, `duration`, and `categoryId`.
+   - Categories (Tags) are dynamic. If a `categoryId` is missing, fallback to hex `#525252`.
+4. **Snapping**: All drag-and-drop or resize operations MUST snap to 5-minute increments (`minutes % 5 === 0`).
+5. **Responsiveness**: The timeline container uses a ref to calculate width. All pixel-to-minute math must use this container width.
+
+## UI/UX "Vibe" Guidelines
+- **Theme**: Dark mode, High-contrast, Professional Film/TV aesthetic.
+- **Colors**: Use the Neon Palette defined in `tailwind.config.ts`. (Electric Cyan, Toxic Green, Neon Pink, etc.).
+- **Interactions**: Use shadcn/ui Dialogs for forms. Use `AnimatePresence` from framer-motion for smooth transitions between "Saved Days".
+
+## Vibe Coding Best Practices
+- **Iterative Building**: Don't refactor everything at once. Build the logic first, then the "polish".
+- **Self-Correction**: If you encounter a hydration error (Next.js), implement the `isMounted` client-side check pattern immediately.
+- **Print Optimization**: Always maintain the `@media print` styles in `globals.css` so the Call Sheet remains a functional A4 PDF.

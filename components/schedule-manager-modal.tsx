@@ -1,6 +1,5 @@
 "use client"
 
-import { useState } from "react"
 import {
   Dialog,
   DialogContent,
@@ -19,6 +18,8 @@ interface ScheduleManagerModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   savedDays: SavedDay[]
+  dayTitle: string
+  onDayTitleChange: (value: string) => void
   onSaveCurrent: (dayTitle: string) => void
   onLoad: (day: SavedDay) => void
   onDelete: (dayId: string) => void
@@ -28,17 +29,16 @@ export function ScheduleManagerModal({
   open,
   onOpenChange,
   savedDays,
+  dayTitle,
+  onDayTitleChange,
   onSaveCurrent,
   onLoad,
   onDelete,
 }: ScheduleManagerModalProps) {
-  const [dayTitle, setDayTitle] = useState("")
-
   const handleSaveCurrent = () => {
     const title = dayTitle.trim()
     if (!title) return
     onSaveCurrent(title)
-    setDayTitle("")
   }
 
   const formatDate = (dateStr: string) => {
@@ -78,7 +78,7 @@ export function ScheduleManagerModal({
                   id="day-title"
                   placeholder="e.g. Day 1 - Studio Shoot"
                   value={dayTitle}
-                  onChange={(e) => setDayTitle(e.target.value)}
+                  onChange={(e) => onDayTitleChange(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleSaveCurrent())}
                 />
               </div>

@@ -88,3 +88,20 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  .call-sheet-subitems-panel {
+    display: grid !important;
+    grid-template-rows: 1fr !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  .call-sheet-subitems-content {
+    overflow: visible !important;
+  }
+
+  .call-sheet-toggle-button {
+    display: none !important;
+  }
+}

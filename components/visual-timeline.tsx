@@ -123,7 +123,11 @@ function EventBlock({
   onEventChange,
   isDragging,
 }: EventBlockProps) {
-  const config = category ?? { border: "border-border", bg: "bg-muted/50", text: "text-muted-foreground" }
+  const config = category ?? {
+    borderColor: "rgba(148, 163, 184, 0.35)",
+    bgColor: "rgba(148, 163, 184, 0.12)",
+    textColor: "#94a3b8",
+  }
   const durationMin = getDurationMinutes(event.startMinutes, event.endMinutes)
   const top = rowIndex * (ROW_HEIGHT + ROW_GAP)
 
@@ -198,11 +202,13 @@ function EventBlock({
       ref={setNodeRef}
       className={cn(
         "absolute rounded-md border flex items-center px-3 overflow-visible cursor-grab active:cursor-grabbing select-none touch-none",
-        config.border,
-        config.bg,
         (dragging || isResizingLocal) && "opacity-60 z-30"
       )}
-      style={style}
+      style={{
+        ...style,
+        borderColor: config.borderColor,
+        backgroundColor: config.bgColor,
+      }}
       title={`${event.title}\n${minutesToHHMM(event.startMinutes)} - ${minutesToHHMM(event.endMinutes)}${event.notes ? `\n${event.notes}` : ""}`}
       {...listeners}
       {...attributes}
@@ -214,7 +220,9 @@ function EventBlock({
         </div>
       )}
       <div className="flex flex-col min-w-0 flex-1 pointer-events-none">
-        <span className={cn("text-xs font-medium truncate", config.text)}>{event.title}</span>
+        <span className="text-xs font-medium truncate" style={{ color: config.textColor }}>
+          {event.title}
+        </span>
         {widthPx > 100 && (
           <span className="text-[10px] text-muted-foreground truncate">
             {minutesToHHMM(event.startMinutes)} - {minutesToHHMM(event.endMinutes)}
@@ -340,7 +348,7 @@ export function VisualTimeline({ events, categories, onEventChange }: TimelinePr
             const style = getCategoryStyle(cat)
             return (
               <div key={cat.id} className="flex items-center gap-1.5">
-                <div className={cn("size-2 rounded-full", style.dot)} />
+                <div className="size-2 rounded-full" style={{ backgroundColor: style.dotColor }} />
                 <span className="text-xs text-muted-foreground hidden sm:inline">{style.label}</span>
               </div>
             )
@@ -451,16 +459,16 @@ export function VisualTimeline({ events, categories, onEventChange }: TimelinePr
                   <div
                     className={cn(
                       "rounded-md border flex items-center px-3 overflow-hidden opacity-80 shadow-lg cursor-grabbing",
-                      activeStyle.border,
-                      activeStyle.bg
                     )}
                     style={{
                       width: `${Math.max((durationMin / DAY_SPAN_MIN) * timelineWidth - 2, 30)}px`,
                       height: `${ROW_HEIGHT}px`,
+                      borderColor: activeStyle.borderColor,
+                      backgroundColor: activeStyle.bgColor,
                     }}
                   >
                     <div className="flex flex-col min-w-0">
-                      <span className={cn("text-xs font-medium truncate", activeStyle.text)}>
+                      <span className="text-xs font-medium truncate" style={{ color: activeStyle.textColor }}>
                         {activeEvent.title}
                       </span>
                       <span className="text-[10px] text-muted-foreground">

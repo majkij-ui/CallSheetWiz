@@ -20,6 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { toast } from "@/hooks/use-toast"
 import type { Category, PlannerEvent } from "@/lib/schedule-types"
 import { getCategoryStyle } from "@/lib/schedule-types"
 import {
@@ -29,11 +30,16 @@ import {
   clampMinutesToDay,
 } from "@/lib/time"
 
+/** Default start when timeline is empty (06:00). */
+const DEFAULT_START_WHEN_EMPTY = 360
+
 interface EventModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   event?: PlannerEvent | null
   categories: Category[]
+  /** When adding (no event), use this as default start time (minutes from midnight). */
+  defaultStartMinutes?: number
   onSave: (event: PlannerEvent) => void
 }
 
@@ -42,6 +48,7 @@ export function EventModal({
   onOpenChange,
   event,
   categories,
+  defaultStartMinutes = DEFAULT_START_WHEN_EMPTY,
   onSave,
 }: EventModalProps) {
   const isEditing = !!event
@@ -55,17 +62,25 @@ export function EventModal({
   const [categoryId, setCategoryId] = useState(firstCategoryId)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
+  useEffect(() => {
+    if (!categories.length) return
+    if (categoryId && categories.some((cat) => cat.id === categoryId)) return
+    setCategoryId(categories[0].id)
+  }, [categories, categoryId])
+
   // Derive duration (minutes) from start and end for display
   const startMinutes = hhmmToMinutes(startTime)
   const endMinutes = hhmmToMinutes(endTime)
   const derivedDuration =
-    startMinutes !== null && endMinutes !== null && endMinutes >= startMinutes
+    startMinutes !== null && endMinutes !== null && endMinutes > startMinutes
       ? getDurationMinutes(startMinutes, endMinutes)
       : 0
 
-  // Sync duration input when start/end change (so the number field reflects derived value)
+  // Sync duration input when start/end change—only when both are set and valid (keeps add-event empty end/duration until user fills them)
   useEffect(() => {
-    setDurationInput(String(derivedDuration))
+    if (startMinutes !== null && endMinutes !== null && endMinutes > startMinutes) {
+      setDurationInput(String(derivedDuration))
+    }
   }, [startTime, endTime])
 
   useEffect(() => {
@@ -79,15 +94,15 @@ export function EventModal({
         setCategoryId(event.categoryId)
       } else {
         setTitle("")
-        setStartTime("08:00")
-        setEndTime("09:00")
-        setDurationInput("60")
+        setStartTime(minutesToHHMM(defaultStartMinutes))
+        setEndTime("")
+        setDurationInput("")
         setNotes("")
         setCategoryId(categories[0]?.id ?? "")
       }
       setErrors({})
     }
-  }, [open, event, categories])
+  }, [open, event, categories, defaultStartMinutes])
 
   const handleStartChange = (value: string) => {
     setStartTime(value)
@@ -154,6 +169,16 @@ export function EventModal({
     const startMinutesVal = hhmmToMinutes(startTime)!
     const endMinutesVal = hhmmToMinutes(endTime)!
 
+    const duration = getDurationMinutes(startMinutesVal, endMinutesVal)
+    if (duration === 0 || endMinutesVal === startMinutesVal) {
+      toast({
+        title: "Invalid duration",
+        description: "Please specify duration or end time.",
+        variant: "destructive",
+      })
+      return
+    }
+
     onSave({
       id: event?.id ?? crypto.randomUUID(),
       title: title.trim(),
@@ -161,6 +186,7 @@ export function EventModal({
       endMinutes: endMinutesVal,
       categoryId: categoryId || firstCategoryId,
       notes: notes.trim() || undefined,
+      subItems: event?.subItems ?? [],
     })
 
     onOpenChange(false)
@@ -196,10 +222,10 @@ export function EventModal({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="event-modal-category">Category</Label>
+            <Label htmlFor="event-modal-category">Tag</Label>
             <Select value={categoryId} onValueChange={setCategoryId}>
               <SelectTrigger id="event-modal-category" className="w-full">
-                <SelectValue placeholder="Select category" />
+                <SelectValue placeholder="Select tag" />
               </SelectTrigger>
               <SelectContent>
                 {categories.map((cat) => {
@@ -207,7 +233,10 @@ export function EventModal({
                   return (
                     <SelectItem key={cat.id} value={cat.id}>
                       <span className="flex items-center gap-2">
-                        <span className={`size-2 rounded-full ${style.dot}`} />
+                        <span
+                          className="size-2 rounded-full"
+                          style={{ backgroundColor: style.dotColor }}
+                        />
                         {style.label}
                       </span>
                     </SelectItem>

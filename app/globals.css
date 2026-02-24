@@ -90,6 +90,12 @@
 }
 
 @media print {
+  :root {
+    --print-time-col: 4.2cm;
+    --print-dur-col: 1.8cm;
+    --print-done-col: 1.35cm;
+  }
+
   @page {
     size: A4;
     margin: 1cm;
@@ -133,9 +139,9 @@
 
   .print-call-sheet-header {
     display: block !important;
-    border-bottom: 0.5pt solid #d1d5db;
-    margin: 0 0 0.75rem;
-    padding: 0 0 0.45rem;
+    border: none !important;
+    margin: 0 0 1.35rem;
+    padding: 0;
   }
 
   .print-call-sheet-header h1 {
@@ -180,7 +186,7 @@
 
   .call-sheet-print-columns {
     display: grid !important;
-    grid-template-columns: 4.2cm 1.8cm 1fr 1.2cm;
+    grid-template-columns: var(--print-time-col) var(--print-dur-col) 1fr var(--print-done-col);
     align-items: start;
     border-bottom: 0.5pt solid #d1d5db;
     background: transparent !important;
@@ -193,16 +199,22 @@
 
   .call-sheet-print-columns > * {
     padding: 6px 8px;
-    border-right: 0.5pt solid #d1d5db;
+    border-right: none;
     min-height: 100%;
+    text-align: left;
   }
 
-  .call-sheet-print-columns > *:last-child {
-    border-right: none;
+  .call-sheet-print-columns > :nth-child(2) {
+    border-right: 0.5pt solid #d1d5db;
+  }
+
+  .call-sheet-print-columns > :nth-child(4) {
+    border-left: 0.5pt solid #d1d5db;
     text-align: center;
   }
 
   .call-sheet-row {
+    position: relative;
     break-inside: avoid;
     page-break-inside: avoid;
     border-bottom: 0.5pt solid #d1d5db;
@@ -214,7 +226,7 @@
 
   .call-sheet-row > .group {
     display: grid !important;
-    grid-template-columns: 4.2cm 1.8cm 1fr 1.2cm;
+    grid-template-columns: var(--print-time-col) var(--print-dur-col) 1fr var(--print-done-col);
     column-gap: 0;
     align-items: start;
     padding: 0 !important;
@@ -242,7 +254,7 @@
   .call-sheet-duration-col,
   .call-sheet-activity-col,
   .call-sheet-event-checkbox {
-    border-right: 0.5pt solid #d1d5db;
+    border-right: none;
     min-height: 100%;
     padding: 8px 8px 7px !important;
     align-self: stretch;
@@ -250,7 +262,6 @@
   }
 
   .call-sheet-event-checkbox {
-    border-right: none;
     min-height: 2.2rem;
     display: grid !important;
     place-self: center !important;
@@ -291,6 +302,26 @@
     text-align: left !important;
     margin: 0 !important;
     align-self: stretch !important;
+  }
+
+  .call-sheet-row::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--print-time-col) + var(--print-dur-col));
+    border-left: 0.5pt solid #d1d5db;
+    pointer-events: none;
+  }
+
+  .call-sheet-row::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: var(--print-done-col);
+    border-left: 0.5pt solid #d1d5db;
+    pointer-events: none;
   }
 
   .call-sheet-activity-col {
@@ -349,7 +380,6 @@
   .call-sheet-subitems-content > div {
     margin: 0 !important;
     border: none !important;
-    border-top: 0.5pt solid #e5e7eb !important;
     border-radius: 0 !important;
     background: #fff !important;
     padding: 5px 8px 8px 28px !important;
@@ -393,7 +423,7 @@
     display: block;
     text-align: center;
     color: #9ca3af;
-    font-size: 8pt;
+    font-size: 9pt;
     letter-spacing: 0.08em;
     font-weight: 500;
     padding: 12px 0 8px;

@@ -25,6 +25,7 @@ import {
   FolderOpen,
   Tag,
   Trash2,
+  Save,
 } from "lucide-react"
 
 interface PlannerHeaderProps {
@@ -35,6 +36,7 @@ interface PlannerHeaderProps {
   onManageDays: () => void
   onManageTags: () => void
   onClearDay: () => void
+  onSave: () => void
 }
 
 export function PlannerHeader({
@@ -45,6 +47,7 @@ export function PlannerHeader({
   onManageDays,
   onManageTags,
   onClearDay,
+  onSave,
 }: PlannerHeaderProps) {
   const formattedDate = shootDate.toLocaleDateString("en-US", {
     weekday: "long",
@@ -54,7 +57,7 @@ export function PlannerHeader({
   })
 
   return (
-    <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <header className="planner-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-start gap-4">
         <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border/70 bg-card">
           <img
@@ -115,7 +118,11 @@ export function PlannerHeader({
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 self-start sm:self-auto">
+      <div className="planner-header-actions flex items-center gap-2 self-start sm:self-auto">
+        <Button variant="outline" className="gap-2" onClick={onSave}>
+          <Save className="size-4" />
+          Save
+        </Button>
         <Button
           variant="outline"
           className="gap-2"

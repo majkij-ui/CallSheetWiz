@@ -32,9 +32,11 @@ const TIMELINE_END_MIN = 22 * 60
 const DAY_SPAN_MIN = 960
 const ROW_HEIGHT = 44
 const ROW_GAP = 6
-const MIN_DURATION_MIN = 15
-/** Fallback width when container not yet measured (14 * 120). */
-const FALLBACK_TIMELINE_WIDTH = 1680
+const MIN_DURATION_MIN = 5
+const MIN_TIMELINE_WIDTH_PX = 2000
+const MIN_EVENT_WIDTH_PX = 8
+/** Fallback width when container not yet measured. */
+const FALLBACK_TIMELINE_WIDTH = MIN_TIMELINE_WIDTH_PX
 
 function pxToStartMinutes(leftPx: number, timelineWidth: number): number {
   if (timelineWidth <= 0) timelineWidth = FALLBACK_TIMELINE_WIDTH
@@ -130,6 +132,9 @@ function EventBlock({
   }
   const durationMin = getDurationMinutes(event.startMinutes, event.endMinutes)
   const top = rowIndex * (ROW_HEIGHT + ROW_GAP)
+  const eventWidthPx = Math.max(widthPx - 2, MIN_EVENT_WIDTH_PX)
+  const showTitle = eventWidthPx >= 56
+  const showTime = eventWidthPx >= 120
 
   const { attributes, listeners, setNodeRef, transform, isDragging: dndIsDragging } = useDraggable({
     id: event.id,
@@ -190,7 +195,7 @@ function EventBlock({
   const dragging = dndIsDragging || isDragging
   const style: React.CSSProperties = {
     left: `${leftPx}px`,
-    width: `${Math.max(widthPx - 2, 30)}px`,
+    width: `${eventWidthPx}px`,
     top: `${top}px`,
     height: `${ROW_HEIGHT}px`,
     opacity: dragging || isResizingLocal ? 0.6 : 1,
@@ -201,7 +206,7 @@ function EventBlock({
     <div
       ref={setNodeRef}
       className={cn(
-        "absolute rounded-md border flex items-center px-3 overflow-visible cursor-grab active:cursor-grabbing select-none touch-none",
+        "absolute rounded-md border flex items-center px-2 overflow-hidden cursor-grab active:cursor-grabbing select-none touch-none",
         (dragging || isResizingLocal) && "opacity-60 z-30"
       )}
       style={{
@@ -219,11 +224,13 @@ function EventBlock({
           {minutesToHHMM(event.startMinutes)} – {minutesToHHMM(event.endMinutes)}
         </div>
       )}
-      <div className="flex flex-col min-w-0 flex-1 pointer-events-none">
-        <span className="text-xs font-medium truncate" style={{ color: config.textColor }}>
-          {event.title}
-        </span>
-        {widthPx > 100 && (
+      <div className="flex flex-col min-w-0 flex-1 pointer-events-none overflow-hidden">
+        {showTitle && (
+          <span className="text-xs font-medium truncate" style={{ color: config.textColor }}>
+            {event.title}
+          </span>
+        )}
+        {showTime && (
           <span className="text-[10px] text-muted-foreground truncate">
             {minutesToHHMM(event.startMinutes)} - {minutesToHHMM(event.endMinutes)}
           </span>
@@ -248,6 +255,7 @@ export function VisualTimeline({ events, categories, onEventChange }: TimelinePr
   const scrollRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerWidth, setContainerWidth] = useState(0)
+  const [zoomLevel, setZoomLevel] = useState(1.5)
 
   useEffect(() => {
     const el = containerRef.current
@@ -260,7 +268,8 @@ export function VisualTimeline({ events, categories, onEventChange }: TimelinePr
     return () => ro.disconnect()
   }, [])
 
-  const timelineWidth = containerWidth > 0 ? containerWidth : FALLBACK_TIMELINE_WIDTH
+  const baseWidth = Math.max(containerWidth, MIN_TIMELINE_WIDTH_PX)
+  const timelineWidth = Math.max(baseWidth * zoomLevel, FALLBACK_TIMELINE_WIDTH)
   const snapSizePx = getSnapSizePx(timelineWidth)
   const snapModifier = createSnapModifier(snapSizePx)
 
@@ -353,6 +362,24 @@ export function VisualTimeline({ events, categories, onEventChange }: TimelinePr
               </div>
             )
           })}
+          <div className="flex items-center gap-2 pl-2 border-l border-border/70">
+            <label htmlFor="timeline-zoom" className="text-xs text-muted-foreground">
+              Zoom
+            </label>
+            <input
+              id="timeline-zoom"
+              type="range"
+              min={1}
+              max={3}
+              step={0.1}
+              value={zoomLevel}
+              onChange={(e) => setZoomLevel(Number(e.target.value))}
+              className="w-24 accent-[#ff6700]"
+            />
+            <span className="w-10 text-right text-xs font-mono text-muted-foreground">
+              {zoomLevel.toFixed(1)}x
+            </span>
+          </div>
         </div>
       </div>
 
@@ -373,6 +400,7 @@ export function VisualTimeline({ events, categories, onEventChange }: TimelinePr
               className="relative"
               style={{
                 width: `${timelineWidth}px`,
+                minWidth: `${MIN_TIMELINE_WIDTH_PX}px`,
                 minHeight: `${totalContentHeight + 36}px`,
               }}
               ref={scrollRef}
@@ -423,7 +451,7 @@ export function VisualTimeline({ events, categories, onEventChange }: TimelinePr
                         category={config}
                         rowIndex={rowIndex}
                         leftPx={left}
-                        widthPx={Math.max(width - 2, 30)}
+                        widthPx={width}
                         timelineWidth={timelineWidth}
                         onEventChange={onEventChange}
                         isDragging={isActive}
@@ -438,7 +466,7 @@ export function VisualTimeline({ events, categories, onEventChange }: TimelinePr
                     className="absolute rounded-md border-2 border-dashed border-primary/50 bg-primary/10 z-10 pointer-events-none"
                     style={{
                       left: `${ghostLeftPx}px`,
-                      width: `${Math.max((durationMin / DAY_SPAN_MIN) * timelineWidth - 2, 30)}px`,
+                      width: `${Math.max((durationMin / DAY_SPAN_MIN) * timelineWidth - 2, MIN_EVENT_WIDTH_PX)}px`,
                       top: `${dragRowIndex * (ROW_HEIGHT + ROW_GAP)}px`,
                       height: `${ROW_HEIGHT}px`,
                     }}
@@ -461,7 +489,7 @@ export function VisualTimeline({ events, categories, onEventChange }: TimelinePr
                       "rounded-md border flex items-center px-3 overflow-hidden opacity-80 shadow-lg cursor-grabbing",
                     )}
                     style={{
-                      width: `${Math.max((durationMin / DAY_SPAN_MIN) * timelineWidth - 2, 30)}px`,
+                      width: `${Math.max((durationMin / DAY_SPAN_MIN) * timelineWidth - 2, MIN_EVENT_WIDTH_PX)}px`,
                       height: `${ROW_HEIGHT}px`,
                       borderColor: activeStyle.borderColor,
                       backgroundColor: activeStyle.bgColor,

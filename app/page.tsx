@@ -8,6 +8,16 @@ import { EventModal } from "@/components/event-modal"
 import { ScheduleManagerModal } from "@/components/schedule-manager-modal"
 import { TagManagerModal } from "@/components/tag-manager-modal"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
   defaultCategories,
   initialPlannerEvents,
 } from "@/lib/schedule-data"
@@ -16,7 +26,7 @@ import { setEventStart, setEventDuration } from "@/lib/editing-engine"
 import { getDurationMinutes } from "@/lib/time"
 import { getSavedDays, setSavedDays } from "@/lib/saved-days-storage"
 import { Separator } from "@/components/ui/separator"
-import { Button } from "@/components/ui/button"
+import { toast } from "@/hooks/use-toast"
 import { Plus } from "lucide-react"
 
 export default function DayPlannerPage() {
@@ -30,6 +40,9 @@ export default function DayPlannerPage() {
   const [tagManagerOpen, setTagManagerOpen] = useState(false)
 
   const [savedDays, setSavedDaysState] = useState<SavedDay[]>([])
+  const [currentDayId, setCurrentDayId] = useState<string | null>(null)
+  const [saveNewDayDialogOpen, setSaveNewDayDialogOpen] = useState(false)
+  const [saveNewDayTitle, setSaveNewDayTitle] = useState("")
   const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
@@ -70,6 +83,7 @@ export default function DayPlannerPage() {
 
   const handleClearDay = () => {
     setEvents([])
+    setCurrentDayId(null)
   }
 
   const handleAddTag = (tag: Category) => {
@@ -105,7 +119,7 @@ export default function DayPlannerPage() {
     const day: SavedDay = {
       id: crypto.randomUUID(),
       dayTitle: dayTitle.trim(),
-      date: normalizeDateForStorage(shootDate),
+      date: new Date().toISOString(),
       events: events.map((e) => ({ ...e })),
       categories: categories.map((c) => ({ ...c })),
     }
@@ -114,12 +128,66 @@ export default function DayPlannerPage() {
       setSavedDays(next)
       return next
     })
+    setCurrentDayId(day.id)
+    setTitle(day.dayTitle)
+  }
+
+  const handleSaveNewDayFromDialog = () => {
+    const name = saveNewDayTitle.trim()
+    if (!name || !isMounted) return
+    const day: SavedDay = {
+      id: crypto.randomUUID(),
+      dayTitle: name,
+      date: new Date().toISOString(),
+      events: events.map((e) => ({ ...e })),
+      categories: categories.map((c) => ({ ...c })),
+    }
+    setSavedDaysState((prev) => {
+      const next = [...prev, day]
+      setSavedDays(next)
+      return next
+    })
+    setCurrentDayId(day.id)
+    setTitle(name)
+    setSaveNewDayDialogOpen(false)
+    setSaveNewDayTitle("")
+    toast({
+      title: "Progress saved",
+      description: `Progress saved to ${name}`,
+    })
+  }
+
+  const handleSaveInHeader = () => {
+    if (!isMounted) return
+    const existing = currentDayId ? savedDays.find((d) => d.id === currentDayId) : null
+    if (existing) {
+      const updated: SavedDay = {
+        ...existing,
+        dayTitle: title.trim() || existing.dayTitle,
+        date: new Date().toISOString(),
+        events: events.map((e) => ({ ...e })),
+        categories: categories.map((c) => ({ ...c })),
+      }
+      setSavedDaysState((prev) => {
+        const next = prev.map((d) => (d.id === currentDayId ? updated : d))
+        setSavedDays(next)
+        return next
+      })
+      toast({
+        title: "Progress saved",
+        description: `Progress saved to ${updated.dayTitle || "Untitled"}`,
+      })
+    } else {
+      setSaveNewDayTitle(title.trim() || "Untitled Shoot")
+      setSaveNewDayDialogOpen(true)
+    }
   }
 
   const handleLoadDay = (day: SavedDay) => {
     setEvents(day.events.map((e) => ({ ...e })))
     setCategories(day.categories.map((c) => ({ ...c })))
     setTitle(day.dayTitle || "Untitled Shoot")
+    setCurrentDayId(day.id)
     const parsed = new Date(day.date)
     if (!Number.isNaN(parsed.getTime())) {
       setShootDate(parsed)
@@ -150,6 +218,7 @@ export default function DayPlannerPage() {
 
   const handleDeleteDay = (dayId: string) => {
     if (!isMounted) return
+    if (currentDayId === dayId) setCurrentDayId(null)
     setSavedDaysState((prev) => {
       const next = prev.filter((d) => d.id !== dayId)
       setSavedDays(next)
@@ -157,9 +226,26 @@ export default function DayPlannerPage() {
     })
   }
 
+  const handleImportDays = (mergedDays: SavedDay[]) => {
+    if (!isMounted) return
+    setSavedDays(mergedDays)
+    setSavedDaysState(mergedDays)
+  }
+
+  const printDate = shootDate.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+
   return (
     <main className="min-h-screen bg-background">
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 flex flex-col gap-6">
+        <div className="print-call-sheet-header" aria-hidden="true">
+          <h1>{title}</h1>
+          <p>{printDate}</p>
+        </div>
         <PlannerHeader
           title={title}
           shootDate={shootDate}
@@ -170,14 +256,17 @@ export default function DayPlannerPage() {
           onManageDays={() => setManagerOpen(true)}
           onManageTags={() => setTagManagerOpen(true)}
           onClearDay={handleClearDay}
+          onSave={handleSaveInHeader}
         />
         <Separator className="bg-border" />
-        <VisualTimeline
-          events={events}
-          categories={categories}
-          onEventChange={handleEventChange}
-        />
-        <div className="flex justify-center">
+        <div className="call-sheet-timeline">
+          <VisualTimeline
+            events={events}
+            categories={categories}
+            onEventChange={handleEventChange}
+          />
+        </div>
+        <div className="call-sheet-add-event flex justify-center">
           <Button
             onClick={handleAddEvent}
             className="h-11 gap-2 rounded-full px-7 bg-[#ff6700] text-white hover:bg-[#ff6700]/90 shadow-[0_0_24px_rgba(255,103,0,0.35)]"
@@ -194,6 +283,15 @@ export default function DayPlannerPage() {
           onDelete={handleDeleteEvent}
           onUpdateEvent={handleUpdateEvent}
         />
+        <div className="call-sheet-add-event flex justify-center pt-1">
+          <Button
+            onClick={handleAddEvent}
+            className="h-11 gap-2 rounded-full px-7 bg-[#ff6700] text-white hover:bg-[#ff6700]/90 shadow-[0_0_24px_rgba(255,103,0,0.35)]"
+          >
+            <Plus className="size-4" />
+            Add Event
+          </Button>
+        </div>
       </div>
 
       <EventModal
@@ -216,6 +314,7 @@ export default function DayPlannerPage() {
         onSaveCurrent={handleSaveCurrentDay}
         onLoad={handleLoadDay}
         onDelete={handleDeleteDay}
+        onImport={handleImportDays}
       />
 
       <TagManagerModal
@@ -225,6 +324,40 @@ export default function DayPlannerPage() {
         onAddTag={handleAddTag}
         onDeleteTag={handleDeleteTag}
       />
+
+      <Dialog open={saveNewDayDialogOpen} onOpenChange={setSaveNewDayDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Save New Day</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Give this day a name to save it to your browser storage.
+          </p>
+          <div className="space-y-2">
+            <Label htmlFor="save-new-day-title">Day title</Label>
+            <Input
+              id="save-new-day-title"
+              placeholder="e.g. Day 1 - Studio Shoot"
+              value={saveNewDayTitle}
+              onChange={(e) => setSaveNewDayTitle(e.target.value)}
+              onKeyDown={(e) =>
+                e.key === "Enter" && (e.preventDefault(), handleSaveNewDayFromDialog())
+              }
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setSaveNewDayDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveNewDayFromDialog}
+              disabled={!saveNewDayTitle.trim()}
+            >
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </main>
   )
 }

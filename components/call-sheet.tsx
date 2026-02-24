@@ -89,7 +89,7 @@ export function CallSheet({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center justify-between">
+      <div className="call-sheet-meta flex items-center justify-between">
         <h2 className="text-sm font-medium uppercase tracking-widest text-muted-foreground">
           Call Sheet
         </h2>
@@ -106,7 +106,13 @@ export function CallSheet({
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card overflow-hidden divide-y divide-border">
+      <div className="call-sheet-table rounded-lg border border-border bg-card overflow-hidden divide-y divide-border">
+        <div className="call-sheet-print-columns">
+          <span>Time</span>
+          <span>Dur</span>
+          <span>Activity</span>
+          <span>Done</span>
+        </div>
         {sorted.map((event) => {
           const category = categoryMap.get(event.categoryId)
           const config = category
@@ -129,7 +135,7 @@ export function CallSheet({
               : `${duration}m`
 
           return (
-            <div key={event.id} className="group/event">
+            <div key={event.id} className="call-sheet-row group/event">
               <div
                 className={`group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-accent/50 ${
                   isChecked ? "opacity-50" : ""
@@ -139,11 +145,11 @@ export function CallSheet({
                   id={`event-${event.id}`}
                   checked={isChecked}
                   onCheckedChange={() => toggleItem(event.id)}
-                  className="shrink-0"
+                  className="call-sheet-event-checkbox shrink-0"
                   aria-label={`Mark "${event.title}" as complete`}
                 />
 
-                <div className="flex items-center gap-2 shrink-0 w-32 sm:w-40">
+                <div className="call-sheet-time-col flex items-center gap-2 shrink-0 w-32 sm:w-40">
                   <Clock className="size-3.5 text-muted-foreground shrink-0" />
                   <span className="text-sm font-mono text-foreground">
                     {minutesToHHMM(event.startMinutes)}
@@ -152,11 +158,11 @@ export function CallSheet({
                   </span>
                 </div>
 
-                <span className="hidden sm:inline-block text-xs font-mono text-muted-foreground shrink-0 w-12">
+                <span className="call-sheet-duration-col hidden sm:inline-block text-xs font-mono text-muted-foreground shrink-0 w-12">
                   {durationStr}
                 </span>
 
-                <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                <div className="call-sheet-activity-col flex flex-col gap-0.5 min-w-0 flex-1">
                   <label
                     htmlFor={`event-${event.id}`}
                     className={`text-sm font-medium truncate cursor-pointer ${
@@ -175,13 +181,13 @@ export function CallSheet({
                   )}
                 </div>
 
-                <span className="hidden lg:inline-flex text-[11px] font-mono text-muted-foreground rounded-full border border-border px-2 py-1 shrink-0">
+                <span className="call-sheet-shots-status hidden lg:inline-flex text-[11px] font-mono text-muted-foreground rounded-full border border-border px-2 py-1 shrink-0">
                   {doneSubItems}/{subItems.length} Shots Done
                 </span>
 
                 <Badge
                   variant="outline"
-                  className="shrink-0 border text-xs hidden sm:inline-flex"
+                  className="call-sheet-category-badge shrink-0 border text-xs hidden sm:inline-flex"
                   style={{
                     borderColor: config.borderColor,
                     backgroundColor: config.bgColor,
@@ -191,12 +197,12 @@ export function CallSheet({
                   {config.label}
                 </Badge>
                 <div
-                  className="size-2.5 rounded-full shrink-0 sm:hidden"
+                  className="call-sheet-category-dot size-2.5 rounded-full shrink-0 sm:hidden"
                   style={{ backgroundColor: config.dotColor }}
                   title={config.label}
                 />
 
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="call-sheet-actions flex items-center gap-1 shrink-0">
                   <Button
                     variant="ghost"
                     size="icon"
@@ -258,14 +264,14 @@ export function CallSheet({
                         addSubItem(event)
                       }}
                       placeholder="Add sub-item and press Enter..."
-                      className="h-8 text-xs bg-background/70 border-border/70"
+                      className="call-sheet-subitem-input h-8 text-xs bg-background/70 border-border/70"
                       aria-label={`Add sub-item for "${event.title}"`}
                     />
 
                     {subItems.length > 0 ? (
-                      <ul className="mt-2 flex flex-col gap-1.5">
+                      <ul className="call-sheet-subitem-list mt-2 flex flex-col gap-1.5">
                         {subItems.map((subItem) => (
-                          <li key={subItem.id} className="flex items-center gap-2">
+                          <li key={subItem.id} className="call-sheet-subitem-row flex items-center gap-2">
                             <Checkbox
                               checked={subItem.isCompleted}
                               onCheckedChange={(checked) => {
@@ -279,6 +285,7 @@ export function CallSheet({
                                 )
                               }}
                               aria-label={`Mark "${subItem.text}" complete`}
+                              className="call-sheet-subitem-checkbox"
                             />
                             <span
                               className={`text-xs flex-1 min-w-0 ${
@@ -292,7 +299,7 @@ export function CallSheet({
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="size-5 text-muted-foreground hover:text-foreground"
+                              className="call-sheet-subitem-delete size-5 text-muted-foreground hover:text-foreground"
                               onClick={() => {
                                 updateSubItems(
                                   event,
@@ -307,7 +314,7 @@ export function CallSheet({
                         ))}
                       </ul>
                     ) : (
-                      <p className="mt-2 text-xs text-muted-foreground">
+                      <p className="call-sheet-no-subitems mt-2 text-xs text-muted-foreground">
                         No sub-items yet.
                       </p>
                     )}

@@ -26,6 +26,21 @@ export function setSavedDays(days: SavedDay[]): void {
   }
 }
 
+/**
+ * Parse and validate JSON file content into SavedDay[].
+ * Returns null if invalid (wrong format or not an array of schedule days).
+ */
+export function parseSavedDaysFile(content: string): SavedDay[] | null {
+  try {
+    const parsed = JSON.parse(content) as unknown
+    if (!Array.isArray(parsed)) return null
+    const days = parsed.flatMap(normalizeSavedDay)
+    return days.length > 0 ? days : (parsed.length === 0 ? [] : null)
+  } catch {
+    return null
+  }
+}
+
 function normalizeSavedDay(value: unknown): SavedDay[] {
   if (!value || typeof value !== "object") return []
 

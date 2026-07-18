@@ -37,6 +37,7 @@ interface PlannerHeaderProps {
   onManageTags: () => void
   onClearDay: () => void
   onSave: () => void
+  onExport: () => void
 }
 
 export function PlannerHeader({
@@ -48,6 +49,7 @@ export function PlannerHeader({
   onManageTags,
   onClearDay,
   onSave,
+  onExport,
 }: PlannerHeaderProps) {
   const formattedDate = shootDate.toLocaleDateString("en-US", {
     weekday: "long",
@@ -169,7 +171,7 @@ export function PlannerHeader({
         </AlertDialog>
         <Button
           className="gap-2 bg-foreground text-background hover:bg-foreground/90"
-          onClick={() => window.print()}
+          onClick={onExport}
         >
           <Download className="size-4" />
           Export Call Sheet

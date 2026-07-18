@@ -25,6 +25,7 @@ import type { Category, PlannerEvent, SavedDay } from "@/lib/schedule-types"
 import { setEventStart, setEventDuration } from "@/lib/editing-engine"
 import { getDurationMinutes } from "@/lib/time"
 import { getSavedDays, setSavedDays } from "@/lib/saved-days-storage"
+import { printCallSheet } from "@/lib/print-call-sheet"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "@/hooks/use-toast"
 import { Plus } from "lucide-react"
@@ -53,6 +54,49 @@ export default function DayPlannerPage() {
     if (!isMounted || typeof window === "undefined") return
     setSavedDaysState(getSavedDays())
   }, [isMounted])
+
+  const handleExportCallSheet = () => {
+    const result = printCallSheet({
+      title,
+      shootDate,
+      events,
+      categories,
+    })
+    if (result === "downloaded") {
+      toast({
+        title: "Call sheet downloaded",
+        description:
+          "Open the HTML file in Chrome or Safari to print to PDF. Printing inside this preview can crash the editor.",
+      })
+    }
+  }
+
+  // Intercept Cmd/Ctrl+P so the live app never enters print media (crashes
+  // Cursor / Electron previews). Route through the detached call-sheet printer.
+  useEffect(() => {
+    if (!isMounted) return
+    const onKeyDown = (event: KeyboardEvent) => {
+      const isPrint =
+        (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "p"
+      if (!isPrint) return
+      event.preventDefault()
+      const result = printCallSheet({
+        title,
+        shootDate,
+        events,
+        categories,
+      })
+      if (result === "downloaded") {
+        toast({
+          title: "Call sheet downloaded",
+          description:
+            "Open the HTML file in Chrome or Safari to print to PDF. Printing inside this preview can crash the editor.",
+        })
+      }
+    }
+    window.addEventListener("keydown", onKeyDown)
+    return () => window.removeEventListener("keydown", onKeyDown)
+  }, [isMounted, title, shootDate, events, categories])
 
   const normalizeDateForStorage = (date: Date): string => {
     const normalized = new Date(date)
@@ -119,7 +163,7 @@ export default function DayPlannerPage() {
     const day: SavedDay = {
       id: crypto.randomUUID(),
       dayTitle: dayTitle.trim(),
-      date: new Date().toISOString(),
+      date: normalizeDateForStorage(shootDate),
       events: events.map((e) => ({ ...e })),
       categories: categories.map((c) => ({ ...c })),
     }
@@ -138,7 +182,7 @@ export default function DayPlannerPage() {
     const day: SavedDay = {
       id: crypto.randomUUID(),
       dayTitle: name,
-      date: new Date().toISOString(),
+      date: normalizeDateForStorage(shootDate),
       events: events.map((e) => ({ ...e })),
       categories: categories.map((c) => ({ ...c })),
     }
@@ -164,7 +208,7 @@ export default function DayPlannerPage() {
       const updated: SavedDay = {
         ...existing,
         dayTitle: title.trim() || existing.dayTitle,
-        date: new Date().toISOString(),
+        date: normalizeDateForStorage(shootDate),
         events: events.map((e) => ({ ...e })),
         categories: categories.map((c) => ({ ...c })),
       }
@@ -257,6 +301,7 @@ export default function DayPlannerPage() {
           onManageTags={() => setTagManagerOpen(true)}
           onClearDay={handleClearDay}
           onSave={handleSaveInHeader}
+          onExport={handleExportCallSheet}
         />
         <Separator className="bg-border" />
         <div className="call-sheet-timeline">

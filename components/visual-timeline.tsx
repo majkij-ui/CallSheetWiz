@@ -262,7 +262,12 @@ export function VisualTimeline({ events, categories, onEventChange }: TimelinePr
     if (!el) return
     const ro = new ResizeObserver((entries) => {
       const entry = entries[0]
-      if (entry) setContainerWidth(entry.contentRect.width)
+      if (!entry) return
+      const width = entry.contentRect.width
+      // Ignore zero width (element hidden, e.g. print media) and sub-pixel
+      // jitter, so a media-switch can't feed a render loop.
+      if (width <= 0) return
+      setContainerWidth((prev) => (Math.abs(prev - width) < 1 ? prev : width))
     })
     ro.observe(el)
     return () => ro.disconnect()

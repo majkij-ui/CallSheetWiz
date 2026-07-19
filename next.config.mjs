@@ -5,8 +5,8 @@ const projectRoot = dirname(fileURLToPath(import.meta.url))
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Pin Turbopack's root so CSS @import "tailwindcss" resolves from this
-  // package, not the parent VibeCoding folder (no package.json there).
+  // If anyone runs Turbopack (`next dev --turbopack`), keep resolution
+  // inside this package — the parent VibeCoding tree is huge and can OOM.
   turbopack: {
     root: projectRoot,
   },

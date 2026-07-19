@@ -397,6 +397,7 @@ export function VisualTimeline({ events, categories, onEventChange }: TimelinePr
       >
         <ScrollArea className="w-full">
           <DndContext
+            id="visual-timeline"
             sensors={sensors}
             onDragStart={handleDragStart}
             onDragMove={handleDragMove}

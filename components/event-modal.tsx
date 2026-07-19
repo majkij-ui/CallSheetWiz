@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { TimeSpinnerInput } from "@/components/time-spinner-input"
 import {
   Select,
   SelectContent,
@@ -246,15 +247,16 @@ export function EventModal({
             </Select>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="event-modal-start">Start (HH:MM)</Label>
-              <Input
+              <TimeSpinnerInput
                 id="event-modal-start"
-                type="time"
+                label="Start time"
                 value={startTime}
-                onChange={(e) => handleStartChange(e.target.value)}
-                aria-invalid={!!errors.startTime}
+                onChange={handleStartChange}
+                fallbackMinutes={defaultStartMinutes}
+                invalid={!!errors.startTime}
               />
               {errors.startTime && (
                 <p className="text-xs text-destructive">{errors.startTime}</p>
@@ -262,12 +264,13 @@ export function EventModal({
             </div>
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="event-modal-end">End (HH:MM)</Label>
-              <Input
+              <TimeSpinnerInput
                 id="event-modal-end"
-                type="time"
+                label="End time"
                 value={endTime}
-                onChange={(e) => handleEndChange(e.target.value)}
-                aria-invalid={!!errors.endTime}
+                onChange={handleEndChange}
+                fallbackMinutes={startMinutes ?? defaultStartMinutes}
+                invalid={!!errors.endTime}
               />
               {errors.endTime && (
                 <p className="text-xs text-destructive">{errors.endTime}</p>

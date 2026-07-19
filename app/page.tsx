@@ -23,7 +23,7 @@ import {
 } from "@/lib/schedule-data"
 import type { Category, PlannerEvent, SavedDay } from "@/lib/schedule-types"
 import { setEventStart, setEventDuration } from "@/lib/editing-engine"
-import { getDurationMinutes } from "@/lib/time"
+import { formatLongDate, getDurationMinutes, todayAtNoon } from "@/lib/time"
 import { getSavedDays, setSavedDays } from "@/lib/saved-days-storage"
 import { printCallSheet } from "@/lib/print-call-sheet"
 import { Separator } from "@/components/ui/separator"
@@ -32,7 +32,8 @@ import { Plus } from "lucide-react"
 
 export default function DayPlannerPage() {
   const [title, setTitle] = useState("Untitled Shoot")
-  const [shootDate, setShootDate] = useState<Date>(new Date())
+  // null until mount so SSR and the client's first paint match (no TZ/date skew)
+  const [shootDate, setShootDate] = useState<Date | null>(null)
   const [categories, setCategories] = useState<Category[]>(defaultCategories)
   const [events, setEvents] = useState<PlannerEvent[]>(initialPlannerEvents)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -48,17 +49,14 @@ export default function DayPlannerPage() {
 
   useEffect(() => {
     setIsMounted(true)
-  }, [])
-
-  useEffect(() => {
-    if (!isMounted || typeof window === "undefined") return
+    setShootDate(todayAtNoon())
     setSavedDaysState(getSavedDays())
-  }, [isMounted])
+  }, [])
 
   const handleExportCallSheet = () => {
     const result = printCallSheet({
       title,
-      shootDate,
+      shootDate: shootDate ?? todayAtNoon(),
       events,
       categories,
     })
@@ -82,7 +80,7 @@ export default function DayPlannerPage() {
       event.preventDefault()
       const result = printCallSheet({
         title,
-        shootDate,
+        shootDate: shootDate ?? todayAtNoon(),
         events,
         categories,
       })
@@ -163,7 +161,7 @@ export default function DayPlannerPage() {
     const day: SavedDay = {
       id: crypto.randomUUID(),
       dayTitle: dayTitle.trim(),
-      date: normalizeDateForStorage(shootDate),
+      date: normalizeDateForStorage(shootDate ?? todayAtNoon()),
       events: events.map((e) => ({ ...e })),
       categories: categories.map((c) => ({ ...c })),
     }
@@ -182,7 +180,7 @@ export default function DayPlannerPage() {
     const day: SavedDay = {
       id: crypto.randomUUID(),
       dayTitle: name,
-      date: normalizeDateForStorage(shootDate),
+      date: normalizeDateForStorage(shootDate ?? todayAtNoon()),
       events: events.map((e) => ({ ...e })),
       categories: categories.map((c) => ({ ...c })),
     }
@@ -208,7 +206,7 @@ export default function DayPlannerPage() {
       const updated: SavedDay = {
         ...existing,
         dayTitle: title.trim() || existing.dayTitle,
-        date: normalizeDateForStorage(shootDate),
+        date: normalizeDateForStorage(shootDate ?? todayAtNoon()),
         events: events.map((e) => ({ ...e })),
         categories: categories.map((c) => ({ ...c })),
       }
@@ -234,6 +232,7 @@ export default function DayPlannerPage() {
     setCurrentDayId(day.id)
     const parsed = new Date(day.date)
     if (!Number.isNaN(parsed.getTime())) {
+      parsed.setHours(12, 0, 0, 0)
       setShootDate(parsed)
     }
     setManagerOpen(false)
@@ -276,12 +275,7 @@ export default function DayPlannerPage() {
     setSavedDaysState(mergedDays)
   }
 
-  const printDate = shootDate.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+  const printDate = shootDate ? formatLongDate(shootDate) : ""
 
   return (
     <main className="min-h-screen bg-background">
@@ -295,7 +289,10 @@ export default function DayPlannerPage() {
           shootDate={shootDate}
           onTitleChange={() => setManagerOpen(true)}
           onDateChange={(date) => {
-            if (date) setShootDate(date)
+            if (!date) return
+            const next = new Date(date)
+            next.setHours(12, 0, 0, 0)
+            setShootDate(next)
           }}
           onManageDays={() => setManagerOpen(true)}
           onManageTags={() => setTagManagerOpen(true)}

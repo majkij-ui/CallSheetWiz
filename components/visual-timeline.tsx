@@ -87,11 +87,14 @@ function assignRows(events: PlannerEvent[]): TimelineRow[] {
 const TOTAL_HOURS = 16 // 06:00 to 22:00
 
 function CurrentTimeMarker({ timelineWidth }: { timelineWidth: number }) {
-  const [now, setNow] = useState(new Date())
+  // Defer until mount — server/client clocks differ and would mismatch style.left.
+  const [now, setNow] = useState<Date | null>(null)
   useEffect(() => {
+    setNow(new Date())
     const interval = setInterval(() => setNow(new Date()), 60000)
     return () => clearInterval(interval)
   }, [])
+  if (!now) return null
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
   if (nowMinutes < TIMELINE_START_MIN || nowMinutes >= TIMELINE_END_MIN) return null
   const offsetMinutes = nowMinutes - TIMELINE_START_MIN

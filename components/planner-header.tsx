@@ -27,10 +27,11 @@ import {
   Trash2,
   Save,
 } from "lucide-react"
+import { formatLocalYmd, formatLongDate } from "@/lib/time"
 
 interface PlannerHeaderProps {
   title: string
-  shootDate: Date
+  shootDate: Date | null
   onTitleChange: () => void
   onDateChange: (date: Date | undefined) => void
   onManageDays: () => void
@@ -51,12 +52,9 @@ export function PlannerHeader({
   onSave,
   onExport,
 }: PlannerHeaderProps) {
-  const formattedDate = shootDate.toLocaleDateString("en-US", {
-    weekday: "long",
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+  // null until the page sets today's date after mount (avoids SSR/client TZ mismatch)
+  const formattedDate = shootDate ? formatLongDate(shootDate) : ""
+  const dateTime = shootDate ? formatLocalYmd(shootDate) : undefined
 
   return (
     <header className="planner-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -105,13 +103,13 @@ export function PlannerHeader({
                   className="hover:text-foreground transition-colors"
                   aria-label="Choose shoot date"
                 >
-                  <time dateTime={shootDate.toISOString().split("T")[0]}>{formattedDate}</time>
+                  <time dateTime={dateTime}>{formattedDate || "Choose date"}</time>
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
-                  selected={shootDate}
+                  selected={shootDate ?? undefined}
                   onSelect={onDateChange}
                   initialFocus
                 />

@@ -2,6 +2,31 @@
  * Time utilities: all internal times are "minutes from midnight" (0 = 00:00, 1439 = 23:59).
  */
 
+/** Local calendar YYYY-MM-DD (not UTC — avoids hydration mismatches near midnight). */
+export function formatLocalYmd(date: Date): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
+
+/** Long en-US date for UI labels. Call only on the client after mount. */
+export function formatLongDate(date: Date): string {
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  })
+}
+
+/** Today at local noon — safe to persist without timezone day rollover. */
+export function todayAtNoon(): Date {
+  const d = new Date()
+  d.setHours(12, 0, 0, 0)
+  return d
+}
+
 /** Convert minutes from midnight to "HH:MM" string. */
 export function minutesToHHMM(minutes: number): string {
   const m = Math.max(0, Math.min(1439, Math.floor(minutes)))
